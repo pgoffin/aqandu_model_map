@@ -1,6 +1,10 @@
 import "./styles.scss";
 
 import * as mapboxgl from 'mapbox-gl';
+import * as Papa from 'papaparse';
+// import fs;
+// import { readFile } from 'fs';
+// const fs = require('fs');
 
 // console.log("Hello, World!");
 
@@ -23,6 +27,39 @@ var map:any = new mapboxgl.Map({
     zoom: 11 // starting zoom
 });
 
+
+// fs.readFile('.data/AQ_fireworks_event_sensors-file.csv', 'utf8', function(err: any, data: any) {
+//     if (err) throw err;
+//     console.log(data);
+// });
+
+
+
+let sensorLocations: Array<Array<number>> = [];
+
+Papa.parse("/data/AQ_fireworkse_event_sensors.csv", {
+  header: true,
+  download: true,
+  skipEmptyLines: true,
+  // Here this is also available. So we can call our custom class method
+  // complete: this.updateData
+  complete: function(result) {
+              console.log(result);
+              result.data.forEach(function(aSensor: any) {
+                let aLat = parseFloat(aSensor['lat']);
+                let aLong = parseFloat(aSensor['long']);
+                sensorLocations.push([aLong, aLat]);
+              })
+            }
+});
+
+
+export class Data {
+  static updateData(result: any) {
+    const data = result.data;
+    console.log(data);
+  }
+}
 
 map.on('load', function () {
 
@@ -96,6 +133,27 @@ map.on('load', function () {
         //     'circle-opacity': 1
         // }
     });
+
+
+    const allSensors = sensorLocations.map(aSensorLocation => ({
+      "type": "Feature",
+      'geometry': {
+          'type': 'Point',
+          'coordinates': aSensorLocation
+      }
+    }));
+
+    map.addLayer({
+        'id': 'sensorLocations',
+        'type': 'circle',
+        'source': {
+            'type': 'geojson',
+            data: {
+                type: 'FeatureCollection',
+                features: allSensors
+            }
+        }
+    })
 
     var scale = new mapboxgl.ScaleControl({
       maxWidth: 80,
